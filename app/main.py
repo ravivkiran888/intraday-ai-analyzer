@@ -1,55 +1,75 @@
 import os
-from contextlib import asynccontextmanager
-
 import httpx
+
+from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request, HTTPException
 
 from app.adapters.groww import GrowwMarketDataAdapter
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR / ".env")
+
+print("Groww API key loaded:", bool(os.getenv("GROWW_API_KEY")))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
     api_key = os.getenv("GROWW_API_KEY")
-
+ 
     if not api_key:
-        raise RuntimeError("GROWW_API_KEY is not configured")
+        raise RuntimeError("GROWW_API_KEY is missing")
 
+    # 1. Configure connection limits
+    limits = httpx.Limits(
+        max_connections=20,
+        max_keepalive_connections=10,
+        keepalive_expiry=30
+    )
+
+    # 2. Configure HTTP timeouts
+    timeout = httpx.Timeout(
+        10.0,
+        connect=5.0,
+        pool=3.0
+    )
+
+    # 3. Create reusable HTTP client
     async with httpx.AsyncClient(
-        base_url="https://api.groww.in",
+        base_url=os.getenv(
+            "GROWW_BASE_URL",
+            "https://api.groww.in"
+        ),
         headers={
             "Authorization": f"Bearer {api_key}",
             "Accept": "application/json",
             "X-API-VERSION": "1.0"
         },
-        timeout=10.0,
-        limits=httpx.Limits(
-            max_connections=30,
-            max_keepalive_connections=20
-        )
+        limits=limits,
+        timeout=timeout
     ) as client:
 
         app.state.groww = GrowwMarketDataAdapter(client)
 
+        print("Groww HTTP client initialized")
+
         yield
 
+    print("Groww HTTP client closed")
 
-app = FastAPI(
-    title="Intraday AI Stock Analyzer",
-    lifespan=lifespan
-)
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/health")
-async def health_check():
+async def health():
     return {"status": "UP"}
 
 
 @app.get("/api/v1/market/quote/{trading_symbol}")
-async def get_live_quote(
+async def get_quote(
     trading_symbol: str,
     request: Request
 ):
@@ -67,17 +87,11 @@ async def get_live_quote(
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=502,
-            detail=f"Groww returned HTTP {exc.response.status_code}"
+            detail=f"Groww API returned HTTP {exc.response.status_code}"
         )
 
     except httpx.RequestError:
         raise HTTPException(
             status_code=502,
-            detail="Unable to connect to Groww"
-        )
-
-    except (RuntimeError, KeyError, ValueError) as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=str(exc)
+            detail="Unable to connect to Groww API"
         )
