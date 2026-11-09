@@ -7,6 +7,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 
 from app.adapters.groww import GrowwMarketDataAdapter
+from app.api.routes.market import router as market_router
+from app.services.market_service import MarketService
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -52,6 +55,7 @@ async def lifespan(app: FastAPI):
     ) as client:
 
         app.state.groww = GrowwMarketDataAdapter(client)
+        app.state.market_service = MarketService(app.state.groww)
 
         print("Groww HTTP client initialized")
 
@@ -61,37 +65,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(
+    market_router,
+    prefix="/api/v1/market",
+    tags=["Market"]
+)
 
 
 @app.get("/health")
 async def health():
     return {"status": "UP"}
 
-
-@app.get("/api/v1/market/quote/{trading_symbol}")
-async def get_quote(
-    trading_symbol: str,
-    request: Request
-):
-    try:
-        return await request.app.state.groww.get_live_quote(
-            trading_symbol
-        )
-
-    except httpx.TimeoutException:
-        raise HTTPException(
-            status_code=504,
-            detail="Groww API request timed out"
-        )
-
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Groww API returned HTTP {exc.response.status_code}"
-        )
-
-    except httpx.RequestError:
-        raise HTTPException(
-            status_code=502,
-            detail="Unable to connect to Groww API"
-        )

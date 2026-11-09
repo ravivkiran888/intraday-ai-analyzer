@@ -1,7 +1,7 @@
 from app.adapters.groww import GrowwMarketDataAdapter
 
 
-  class MarketService:
+class MarketService:
 
     def __init__(self, groww_adapter: GrowwMarketDataAdapter):
         self.groww_adapter = groww_adapter
