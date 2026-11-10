@@ -11,3 +11,17 @@ class MarketService:
         quote = await self.groww_adapter.get_live_quote(symbol)
 
         return quote
+
+
+    async def get_historical_candles(
+        self,
+        groww_symbol: str,
+        start_time: str,
+        end_time: str,
+        candle_interval: str = "5minute",
+    ):
+        candles = await self.groww_adapter.get_historical_candles(
+            groww_symbol, start_time, end_time, candle_interval
+        )
+
+        return candles

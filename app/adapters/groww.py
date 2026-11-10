@@ -8,18 +8,15 @@ class GrowwMarketDataAdapter:
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
 
-    async def get_live_quote(
-        self,
-        trading_symbol: str
-    ) -> LiveQuote:
+    async def get_live_quote(self, trading_symbol: str) -> LiveQuote:
 
         response = await self.client.get(
             "/v1/live-data/quote",
             params={
                 "exchange": "NSE",
                 "segment": "CASH",
-                "trading_symbol": trading_symbol.upper()
-            }
+                "trading_symbol": trading_symbol.upper(),
+            },
         )
 
         response.raise_for_status()
@@ -39,5 +36,29 @@ class GrowwMarketDataAdapter:
             last_price=payload["last_price"],
             day_change=payload["day_change"],
             day_change_perc=payload["day_change_perc"],
-            volume=payload["volume"]
+            volume=payload["volume"],
         )
+
+
+    async def get_historical_candles(
+        self,
+        groww_symbol: str,
+        start_time: str,
+        end_time: str,
+        candle_interval: str = "5minute",
+    ):
+        response = await self.client.get(
+            "/v1/historical/candles",
+            params={
+                "exchange": "NSE",
+                "segment": "CASH",
+                "groww_symbol": groww_symbol,
+                "start_time": start_time,
+                "end_time": end_time,
+                "candle_interval": candle_interval,
+            },
+        )
+
+        response.raise_for_status()
+
+        return response.json()
