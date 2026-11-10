@@ -1,4 +1,5 @@
 from app.adapters.groww import GrowwMarketDataAdapter
+from app.schemas.market import Candle
 
 
 class MarketService:
@@ -12,7 +13,6 @@ class MarketService:
 
         return quote
 
-
     async def get_historical_candles(
         self,
         groww_symbol: str,
@@ -20,8 +20,12 @@ class MarketService:
         end_time: str,
         candle_interval: str = "5minute",
     ):
-        candles = await self.groww_adapter.get_historical_candles(
+        response = await self.groww_adapter.get_historical_candles(
             groww_symbol, start_time, end_time, candle_interval
         )
+
+        raw_candles = response["payload"]["candles"]
+
+        candles = [Candle.convert_to_candle(raw_candle) for raw_candle in raw_candles]
 
         return candles

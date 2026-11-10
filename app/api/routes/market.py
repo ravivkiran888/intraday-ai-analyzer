@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 
 from app.api.dependencies import get_market_service
 from app.services.market_service import MarketService
+from app.schemas.market import Candle
 
 router = APIRouter()
 
@@ -23,7 +24,7 @@ async def get_quote(
         ) from exc
 
 
-@router.get("/candles/{groww_symbol}")
+@router.get("/candles/{groww_symbol}", response_model=list[Candle])
 async def get_historical_candles(
     groww_symbol: str,
     start_time: str,
