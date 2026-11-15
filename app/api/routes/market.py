@@ -1,6 +1,6 @@
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path
-
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.dependencies import get_market_service
 from app.services.market_service import MarketService
 from app.schemas.market import Candle
@@ -40,4 +40,17 @@ async def get_historical_candles(
     except Exception as exc:
         raise HTTPException(
             status_code=502, detail=f"Unable to fetch historical candles: {str(exc)}"
+        )
+
+
+@router.get("/quotes")
+async def get_multiple_quotes(
+    symbols: list[str] = Query(...),
+    market_service: MarketService = Depends(get_market_service),
+):
+    try:
+        return await market_service.get_multiple_quotes(symbols)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"Unable to fetch stock quotes: {str(exc)}"
         )

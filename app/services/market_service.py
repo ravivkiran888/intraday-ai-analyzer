@@ -1,5 +1,6 @@
 from app.adapters.groww import GrowwMarketDataAdapter
 from app.schemas.market import Candle
+import asyncio
 
 
 class MarketService:
@@ -12,6 +13,14 @@ class MarketService:
         quote = await self.groww_adapter.get_live_quote(symbol)
 
         return quote
+
+    async def get_multiple_quotes(self, symbols: list[str]):
+
+        tasks = [self.get_stock_quote(symbol) for symbol in symbols]
+
+        results = await asyncio.gather(*tasks)
+
+        return results
 
     async def get_historical_candles(
         self,
