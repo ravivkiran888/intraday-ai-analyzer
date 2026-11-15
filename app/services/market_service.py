@@ -9,18 +9,24 @@ class MarketService:
         self.groww_adapter = groww_adapter
 
     async def get_stock_quote(self, symbol: str):
-
         quote = await self.groww_adapter.get_live_quote(symbol)
-
         return quote
 
     async def get_multiple_quotes(self, symbols: list[str]):
-
         tasks = [self.get_stock_quote(symbol) for symbol in symbols]
 
-        results = await asyncio.gather(*tasks)
+        results = await asyncio.gather(
+            *tasks,
+            return_exceptions=True,
+        )
 
-        return results
+        quotes = []
+
+        for symbol, result in zip(symbols, results):
+            if not isinstance(result, Exception):
+                quotes.append(result)
+
+        return quotes
 
     async def get_historical_candles(
         self,
