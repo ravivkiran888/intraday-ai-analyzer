@@ -8,7 +8,9 @@ from fastapi import FastAPI, Request, HTTPException
 
 from app.adapters.groww import GrowwMarketDataAdapter
 from app.api.routes.market import router as market_router
+from app.api.routes.market_v2 import router as market_v2_router;
 from app.services.market_service import MarketService
+from fastapi.middleware.cors import CORSMiddleware
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -51,7 +53,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(market_router, prefix="/api/v1/market", tags=["Market"])
+app.include_router(market_v2_router, prefix="/api/v2/market", tags=["Market V2"])
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 async def health():

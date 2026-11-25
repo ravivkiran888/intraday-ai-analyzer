@@ -9,17 +9,34 @@ class GrowwMarketDataAdapter:
         self.client = client
 
     async def get_live_quote(self, trading_symbol: str) -> LiveQuote:
+        symbol = trading_symbol.upper()
 
-        response = await self.client.get(
-            "/v1/live-data/quote",
-            params={
-                "exchange": "NSE",
-                "segment": "CASH",
-                "trading_symbol": trading_symbol.upper(),
-            },
-        )
+        try:
+            response = await self.client.get(
+                "/v1/live-data/quote",
+                params={
+                    "exchange": "NSE",
+                    "segment": "CASH",
+                    "trading_symbol": symbol,
+                },
+            )
 
-        response.raise_for_status()
+            response.raise_for_status()
+
+        except httpx.TimeoutException as exc:
+            raise RuntimeError(
+                f"Groww API timeout while fetching {symbol}"
+            ) from exc
+
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(
+                f"Groww API returned HTTP {exc.response.status_code}"
+            ) from exc
+
+        except httpx.RequestError as exc:
+            raise RuntimeError(
+                f"Network error while fetching {symbol}"
+            ) from exc
 
         data = response.json()
 
@@ -32,13 +49,12 @@ class GrowwMarketDataAdapter:
             raise RuntimeError("Groww response has no payload")
 
         return LiveQuote(
-            symbol=trading_symbol.upper(),
+            symbol=symbol,
             last_price=payload["last_price"],
             day_change=payload["day_change"],
             day_change_perc=payload["day_change_perc"],
             volume=payload["volume"],
         )
-
 
     async def get_historical_candles(
         self,
@@ -61,4 +77,17 @@ class GrowwMarketDataAdapter:
 
         response.raise_for_status()
 
+        return response.json()
+
+    async def get_sector_quote(self, sector_symbol: str):
+        response = await self.client.get(
+            "/v1/live-data/quote",
+            params={
+                "exchange": "NSE",
+                "segment": "CASH",
+                "trading_symbol": sector_symbol.upper(),
+            },
+        )
+
+        response.raise_for_status()
         return response.json()

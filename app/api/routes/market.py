@@ -1,27 +1,27 @@
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.api.dependencies import get_market_service
+from app.schemas.market import Candle, LiveQuote, SectorQuote
+from app.schemas.StockAnalysisRequest import StockAnalysisRequest
 from app.services.market_service import MarketService
-from app.schemas.market import Candle
 
 router = APIRouter()
 
 
 @router.get("/quote/{trading_symbol}")
 async def get_quote(
-    trading_symbol: str = Path(min_length=1, max_length=20),
+    trading_symbol: str,
     market_service: MarketService = Depends(get_market_service),
 ):
     try:
         quote = await market_service.get_stock_quote(trading_symbol)
         return quote
 
-    except (httpx.HTTPError, RuntimeError) as exc:
+    except RuntimeError as exc:
         raise HTTPException(
             status_code=502,
-            detail="Unable to fetch stock quote from the upstream service",
-        ) from exc
+            detail=str(exc)
+        )
 
 
 @router.get("/candles/{groww_symbol}", response_model=list[Candle])
@@ -43,7 +43,7 @@ async def get_historical_candles(
         )
 
 
-@router.get("/quotes")
+@router.get("/quotes", response_model=list[LiveQuote])
 async def get_multiple_quotes(
     symbols: list[str] = Query(...),
     market_service: MarketService = Depends(get_market_service),
@@ -54,3 +54,23 @@ async def get_multiple_quotes(
         raise HTTPException(
             status_code=502, detail=f"Unable to fetch stock quotes: {str(exc)}"
         )
+
+
+@router.post("/analyze")
+async def analyze_stock(request: StockAnalysisRequest):
+    return {
+        "symbol": request.symbol,
+        "candle_interval": request.candle_interval,
+        "period": request.period,
+    }
+
+
+@router.get("/sector/{sector_symbol}", response_model=SectorQuote)
+async def get_sector_quote(
+    sector_symbol: str,
+    market_service: MarketService = Depends(get_market_service),
+):
+    try:
+        return await market_service.get_sector_quote(sector_symbol)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))

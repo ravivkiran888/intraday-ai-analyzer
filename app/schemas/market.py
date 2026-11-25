@@ -34,3 +34,15 @@ class Candle(BaseModel):
             volume=raw_candle[5],
             open_interest=raw_candle[6],
         )
+
+class SectorQuote(BaseModel):
+    symbol: str
+    last_price: float
+    day_change: float
+    day_change_perc: float
+    open: float | None = None
+    high: float | None = None
+    low: float | None = None
+    close: float | None = None
+    week_52_high: float | None = None
+    week_52_low: float | None = None
