@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.api.dependencies import get_market_service
 from app.schemas.market import Candle, LiveQuote, SectorQuote
 from app.schemas.StockAnalysisRequest import StockAnalysisRequest
 from app.services.market_service import MarketService
+from app.services.technical_analysis_service import TechnicalAnalysisService
 
 router = APIRouter()
 
+def get_technical_analysis_service(request: Request):
+    return request.app.state.technical_analysis_service
 
 @router.get("/quote/{trading_symbol}")
 async def get_quote(
@@ -74,3 +77,22 @@ async def get_sector_quote(
         return await market_service.get_sector_quote(sector_symbol)
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+
+@router.get("/analyze/{trading_symbol}")
+async def analyze_stock(
+    trading_symbol: str,
+    start_time: str,
+    end_time: str,
+    market_service: MarketService = Depends(get_market_service),
+    analysis_service: TechnicalAnalysisService = Depends(
+        get_technical_analysis_service
+    )
+):
+    candles = await market_service.get_historical_candles(
+        f"NSE-{trading_symbol.upper()}",
+        start_time,
+        end_time,
+        "5minute"
+    )
+
+    return analysis_service.analyze(candles)

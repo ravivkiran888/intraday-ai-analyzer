@@ -1,8 +1,7 @@
-from app.schemas.market import Candle
+from app.analysis.ema import calculate_ema
 
-raw_candle = ["2025-09-24T10:55:00", 245.54, 245.72, 245.52, 245.60, 122217, None]
+prices = [100, 102, 104, 106, 108]
 
-candle = Candle.convert_to_candle(raw_candle)
+result = calculate_ema(prices, 3)
 
-print(candle)
-print(candle.close)
+print("EMA Result:", result)
